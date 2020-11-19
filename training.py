@@ -23,8 +23,8 @@ for line in training_seqs_file:
     seq = ' '.join(seq)
     seq = seq.split(' ')
 
-    metadata['gene_start'] = int(seq[0]) - 1  # subtract 1 because sequence starts at 1
-    metadata['gene_end'] = int(seq[1]) - 1  # subtract 1 because sequence starts at 1
+    metadata['query_start'] = int(seq[0]) - 1  # subtract 1 because sequence starts at 1
+    metadata['query_end'] = int(seq[1]) - 1  # subtract 1 because sequence starts at 1
     metadata['gene_coding_runs'] = []
 
     coding_runs = ' '.join(seq[2:])
