@@ -6,16 +6,18 @@
 NONCODING = 'noncoding'
 START_CODON = 'start-codon'
 INTERNAL_CODONS = 'internal-codons'
+SUB_MODEL = 'submodel'
+TRANS_TO = 'to'
 OCC = 'occurrences'
 
 
 class Model:
     model = {
         'noncoding': {
-            'a': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0},
-            't': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0},
-            'g': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0},
-            'c': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0}
+            'a': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1},
+            't': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1},
+            'g': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1},
+            'c': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1}
         },
         'start-codon': {},
         'internal-codons': {
@@ -53,34 +55,50 @@ class Model:
     def __init__(self, seq, metadata):
         self.seq = seq
         self.metadata = metadata
-        self.gene_count = len(metadata)
+        self.query_count = len(metadata)
 
     def train(self):
         self.train_noncoding_region()
         print(self.model[NONCODING])
 
     def train_noncoding_region(self):
-        current_gene = 0
-        current_gene_start = self.metadata[current_gene]['gene_start']
+        current_query = 0
 
-        for i in range(0, self.gene_count):
-            seqs = self.build_noncoding_seq(i)
-            for seq in seqs:
+        for i in range(0, self.query_count):
+            mid_runs, end_runs = self.build_noncoding_seq(i)
+
+            for seq in mid_runs:
                 for j in range(0, len(seq) - 1):
                     current_nt = seq[j]
                     next_nt = seq[j+1]
-                    self.model[NONCODING][current_nt][next_nt] = self.model[NONCODING][current_nt][next_nt] + 1
-                    self.model[NONCODING][current_nt][OCC] = self.model[NONCODING][current_nt][OCC] + 1
+                    self.model[NONCODING][current_nt][next_nt] += 1
+                    self.model[NONCODING][current_nt][OCC] += 1
+
+                    if j == len(seq) - 2:
+                        self.model[NONCODING][next_nt]['transitions_to_start_codon'] += 1
+
+            for seq in end_runs:
+                for j in range(0, len(seq) - 1):
+                    current_nt = seq[j]
+                    next_nt = seq[j+1]
+                    self.model[NONCODING][current_nt][next_nt] += 1
+                    self.model[NONCODING][current_nt][OCC] += 1
+
+                    if j == len(seq) - 2:
+                        self.model[NONCODING][next_nt]['transitions_to_end'] += 1
+
+        print('')
 
     def build_noncoding_seq(self, gene_index):
         print(gene_index)
-        seqs = []
+        mid_seqs = []
+        end_seqs = []
         gene = self.metadata[gene_index]
 
         # sequence from the start of the gene up to the start codon
-        lower_bound = gene['gene_start']
+        lower_bound = gene['query_start']
         upper_bound = gene['gene_coding_runs'][0]['start']
-        seqs.append(self.seq[lower_bound:upper_bound])
+        mid_seqs.append(self.seq[lower_bound:upper_bound])
 
         print(lower_bound, upper_bound)
 
@@ -89,15 +107,18 @@ class Model:
         for i in range(0, num_runs - 1):
             lower_bound = gene['gene_coding_runs'][i]['end'] + 1
             upper_bound = gene['gene_coding_runs'][i+1]['start']
-            seqs.append(self.seq[lower_bound:upper_bound])
+            mid_seqs.append(self.seq[lower_bound:upper_bound])
             print(lower_bound, upper_bound)
 
         # sequence from the last coding nt to the end of the gene
         lower_bound = gene['gene_coding_runs'][-1]['end'] + 1
-        upper_bound = gene['gene_end']
-        seqs.append(self.seq[lower_bound:upper_bound])
+        upper_bound = gene['query_end']
 
-        print(lower_bound, upper_bound)
+        if lower_bound < upper_bound:
+            end_seqs.append(self.seq[lower_bound:upper_bound])
+            print('end', lower_bound, upper_bound, self.seq[upper_bound])
+
+        # print(lower_bound, upper_bound)
         print('\n')
 
-        return seqs
+        return mid_seqs, end_seqs
