@@ -19,13 +19,13 @@ class Model:
             'g': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1},
             'c': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'occurrences': 0, 'transitions_to_start_codon': 1, 'transitions_to_end': 1}
         },
-        'start-codon': {},
+        'start-codon': {
+            'first-nt': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'transitions_to_internal_codons': 0.0},
+            'second-nt': {'a': 0.0, 't': 1.0, 'g': 0.0, 'c': 0.0, 'transitions_to_internal_codons': 0.0},
+            'third-nt': {'a': 0.0, 't': 0.0, 'g': 1.0, 'c': 0.0, 'transitions_to_internal_codons': 1.0, 'transition_count': 0}
+        },
         'internal-codons': {
             'stop-codons': ['taa', 'tag', 'tga'],
-            'a': {'t': 1.0},
-            't': {'t': 0.5, 'g': 0.5},
-            'g': {'t': 0.5, 'internal-codons': 0.5},
-            'c': {'t': 1.0}
         },
         'submodel': {
             'start': {
@@ -61,6 +61,12 @@ class Model:
         self.train_noncoding_region()
         print(self.model[NONCODING])
 
+        self.train_start_codon_region()
+        print(self.model[START_CODON])
+
+        self.train_internal_codons()
+        print(self.model[INTERNAL_CODONS])
+
     def train_noncoding_region(self):
         current_query = 0
 
@@ -89,11 +95,46 @@ class Model:
 
         print('')
 
-    def build_noncoding_seq(self, gene_index):
-        print(gene_index)
+    def train_start_codon_region(self):
+        for i in range(0, self.query_count):
+            ranges = self.metadata[i]['gene_coding_runs']
+
+            for coding_range in ranges:
+                start = coding_range['start']
+                self.model[START_CODON]['first-nt'][self.seq[start]] += 1
+
+        # check if any nt is 0, if so add 1 to smooth the results
+        for nt in self.model[START_CODON]['first-nt']:
+            if self.model[START_CODON]['first-nt'][nt] == 0:
+                self.model[START_CODON]['first-nt'][nt] = 1
+
+        # generate possible list of codons the last nucleotide in the start codon can go to
+        nt_list = ['a', 'c', 't', 'g']
+        for i in range(0, len(nt_list)):
+            for j in range(0, len(nt_list)):
+                for k in range(0, len(nt_list)):
+                    codon = nt_list[i] + nt_list[j] + nt_list[k]
+                    self.model[START_CODON]['third-nt'][codon] = 1
+
+        for i in range(0, self.query_count):
+            ranges = self.metadata[i]['gene_coding_runs']
+
+            for coding_range in ranges:
+                start = coding_range['start']+3
+                codon = self.seq[start: start + 3]
+                self.model[START_CODON]['third-nt'][codon] += 1
+                self.model[START_CODON]['third-nt']['transition_count'] += 1
+
+    def train_internal_codons(self):
+        self.build_internal_codon_tree()
+
+
+
+    def build_noncoding_seq(self, query_index):
+        print(query_index)
         mid_seqs = []
         end_seqs = []
-        gene = self.metadata[gene_index]
+        gene = self.metadata[query_index]
 
         # sequence from the start of the gene up to the start codon
         lower_bound = gene['query_start']
@@ -122,3 +163,17 @@ class Model:
         print('\n')
 
         return mid_seqs, end_seqs
+
+    def build_internal_codon_tree(self):
+        nt_list = ['a', 'c', 't', 'g']
+        for i in range(0, len(nt_list)):
+            for j in range(0, len(nt_list)):
+                for k in range(0, len(nt_list)):
+                    codon = nt_list[i] + nt_list[j] + nt_list[k]
+                    self.model[INTERNAL_CODONS][codon] = {}
+
+                    for u in range(0, len(nt_list)):
+                        for m in range(0, len(nt_list)):
+                            for n in range(0, len(nt_list)):
+                                subcodon = nt_list[u] + nt_list[m] + nt_list[n]
+                                self.model[INTERNAL_CODONS][codon][subcodon] = 1
