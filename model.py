@@ -38,6 +38,11 @@ class Model:
         self.metadata = metadata
         self.query_count = len(metadata)
 
+    def load_model(self, bfilename):
+        with open(bfilename, 'rb') as model_file:
+            self.model = pickle.load(model_file)
+        print(self.model)
+
     def train(self):
         print('Training model...')
         self.train_noncoding_region()
@@ -339,3 +344,6 @@ class Model:
         j = json.dumps(self.model, indent=4, sort_keys=True)
         f = open(filename, 'w')
         f.write(j)
+
+    def test(self, start, end):
+        print("scanning " + str(start) + " to " + str(end))
