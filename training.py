@@ -10,8 +10,6 @@ full_seq_file = open(full_seq_file_name)
 full_seq = full_seq_file.read().split()  # read the file, and remove whitespace and newline chars
 full_seq = ''.join(full_seq)  # rejoin the split with no space between elements
 
-print(full_seq)
-
 training_seqs_file = open(training_seqs_file_name)
 
 sequence_metadata = []
@@ -40,9 +38,8 @@ for line in training_seqs_file:
     # append this gene metadata
     sequence_metadata.append(metadata)
 
-print(sequence_metadata)
-print(full_seq[189:254])
 
 model = Model(full_seq, sequence_metadata)
 model.train()
-print(len(full_seq))
+model.save_model_json('model.json')
+model.save_model_bin('model_bin')
