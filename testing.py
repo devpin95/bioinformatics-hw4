@@ -16,14 +16,14 @@ for line in testfile:
     metadata = {}
 
     seq = line.split()
-    metadata['query-start'] = int(seq[0])
-    metadata['query-end'] = int(seq[1])
+    metadata['query-start'] = int(seq[0]) - 1
+    metadata['query-end'] = int(seq[1]) - 1
     metadata['targets'] = []
 
     for i in range(2, len(seq) - 1, 2):
         rangestr = seq[i] + seq[i + 1]
         rangestr = rangestr[1:len(rangestr)-1].split(',')
-        metadata['targets'].append({'start': int(rangestr[0]), 'end': int(rangestr[1])})
+        metadata['targets'].append({'start': int(rangestr[0]) - 1, 'end': int(rangestr[1]) - 1})
 
     test_seqs.append(metadata)
 
@@ -31,3 +31,6 @@ model = Model(full_seq, {})
 
 bmodelfile = 'model_bin'
 model.load_model(bmodelfile)
+
+for seq in test_seqs:
+    model.test(seq['query-start'], seq['query-end'])

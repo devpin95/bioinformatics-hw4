@@ -1,5 +1,4 @@
 import re
-import pickle
 from model import Model
 
 full_seq_file_name = "sequenceOfEcoliStrainM54.txt"

@@ -1,4 +1,8 @@
 {
+  "metadata": {
+    "ignore-top-level-vals": 2,
+    "state-order": ["noncoding", "start-codon-first", "start-codon-t", "start-codon-g", "internal-codons", "stop-codons"]
+  }, 
   "start": {
     "from": null,
     "to": ["noncoding"]
@@ -111,6 +115,12 @@
     "from": [
       {"state": "internal-codons", "submodel": "internal-codons"},
       {"state": "g", "submodel": "start-codon-g"}
+    ]
+  },
+
+  "stop-codons": {
+    "from": [
+      {"state": "internal-codons", "submodel": "internal-codons"}
     ]
   }
 }

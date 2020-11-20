@@ -7,6 +7,8 @@ INTERNAL_CODONS = 'internal-codons'
 SUB_MODEL = 'submodel'
 OCC = 'occurrences'
 
+state_transition_filename = "model_transitions.json"
+
 
 class Model:
     model = {
@@ -37,11 +39,14 @@ class Model:
         self.seq = seq
         self.metadata = metadata
         self.query_count = len(metadata)
+        self.state_transitions = None
+        self.probability_table = []
+        self.state_changes_table = []
+        self.state_order = ['noncoding', 'start-codon-first', 'start-codon-t', 'start-codon-g', 'internal-codons', 'stop-codons']
 
     def load_model(self, bfilename):
         with open(bfilename, 'rb') as model_file:
             self.model = pickle.load(model_file)
-        print(self.model)
 
     def train(self):
         print('Training model...')
@@ -346,4 +351,58 @@ class Model:
         f.write(j)
 
     def test(self, start, end):
-        print("scanning " + str(start) + " to " + str(end))
+        if self.state_transitions is None:
+            self.load_state_transitions()
+        seq = self.seq[start:end]
+        self.build_tables(seq)
+
+        self.set_first_state(seq)
+
+        self.viterbi(len(seq) - 1, seq, self.state_transitions['metadata']['state-order'].index("noncoding"))
+
+        self.probability_table = []
+        self.state_changes_table = []
+
+    def load_state_transitions(self):
+        with open(state_transition_filename) as st_json:
+            self.state_transitions = json.load(st_json)
+
+    def build_tables(self, seq):
+        ignore_count = self.state_transitions['metadata']['ignore-top-level-vals']
+        for i in range(0, len(self.state_transitions) - ignore_count):
+            self.probability_table.append([])
+            self.state_changes_table.append([])
+            for j in range(0, len(seq)):
+                self.probability_table[i].append(0)
+                self.state_changes_table[i].append({})
+
+    def set_first_state(self, seq):
+        state = self.state_transitions['metadata']['state-order'].index("noncoding")
+        self.probability_table[state][0] = 0
+        self.state_changes_table[state][0]['from'] = 'start'
+
+    def viterbi(self, i, seq, current_state):
+        if i == 0:
+            return 0
+        char = seq[i]
+        current_state_name = self.state_transitions['metadata']['state-order'][current_state]
+
+        if current_state == self.state_transitions['metadata']['state-order'].index("noncoding"):
+            prev_destinations = self.state_transitions[current_state_name][char]['from']
+
+            max = {"noncoding": 0, 'internal-codons': 0}
+
+            for destination in prev_destinations:
+                submodel = destination['submodel']
+                if submodel == 'noncoding':
+                    # prob = self.model[submodel][destination['state']][char]
+                    prob = self.viterbi(i, seq, self.state_transitions['metadata']['state-order'].index("noncoding"))
+                    if prob > max['noncoding']:
+                        max['noncoding'] = prob
+                elif submodel == 'internal-codons':
+                    # prob = self.model[submodel]['stop-codons'][destination['state']][char]
+                    prob = self.viterbi(i-3, seq, self.state_transitions['metadata']['state-order'].index("internal-codons"))
+                    if prob > max['internal-codons']:
+                        max['internal-codons'] = prob
+
+        elif current_state == self.state_transitions['metadata']['state-order'].index("stop-codons"):
