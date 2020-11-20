@@ -1,0 +1,116 @@
+{
+  "start": {
+    "from": null,
+    "to": ["noncoding"]
+  },
+
+  "noncoding": {
+    "a": {
+      "from": [
+        {"state": "start", "submodel": "start"},
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"},
+        {"state":  "taa", "submodel": "internal-codons"},
+        {"state":  "tag", "submodel": "internal-codons"},
+        {"state":  "tga", "submodel": "internal-codons"}
+      ]
+    },
+    "t": {
+      "from": [
+        {"state": "start", "submodel": "start"},
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"},
+        {"state":  "taa", "submodel": "internal-codons"},
+        {"state":  "tag", "submodel": "internal-codons"},
+        {"state":  "tga", "submodel": "internal-codons"}
+      ]
+    },
+    "c": {
+      "from": [
+        {"state": "start", "submodel": "start"},
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"},
+        {"state":  "taa", "submodel": "internal-codons"},
+        {"state":  "tag", "submodel": "internal-codons"},
+        {"state":  "tga", "submodel": "internal-codons"}
+      ]
+    },
+    "g": {
+      "from": [
+        {"state": "start", "submodel": "start"},
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"},
+        {"state":  "taa", "submodel": "internal-codons"},
+        {"state":  "tag", "submodel": "internal-codons"},
+        {"state":  "tga", "submodel": "internal-codons"}
+      ]
+    }
+  },
+
+  "start-codon-first": {
+    "a": {
+      "from": [
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"}
+      ]
+    },
+    "t": {
+      "from": [
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"}
+      ]
+    },
+    "c": {
+      "from": [
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"}
+      ]
+    },
+    "g": {
+      "from": [
+        {"state": "a", "submodel": "noncoding"},
+        {"state": "c", "submodel": "noncoding"},
+        {"state": "g", "submodel": "noncoding"},
+        {"state": "t", "submodel": "noncoding"}
+      ]
+    }
+  },
+
+  "start-codon-t": {
+    "t": {
+      "from": [
+        {"state": "a", "submodel": "start-codon-first"},
+        {"state": "t", "submodel": "start-codon-first"},
+        {"state": "c", "submodel": "start-codon-first"},
+        {"state": "g", "submodel": "start-codon-first"}
+      ]
+    }
+  },
+
+  "start-codon-g": {
+    "from": [
+      {"state": "t", "submodel": "start-codon-t"}
+    ]
+  },
+
+  "internal-codons": {
+    "from": [
+      {"state": "internal-codons", "submodel": "internal-codons"},
+      {"state": "g", "submodel": "start-codon-g"}
+    ]
+  }
+}
