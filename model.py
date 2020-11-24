@@ -1,17 +1,20 @@
 import pickle
 import json
+import math
 
 NONCODING = 'noncoding'
 START_CODON = 'start-codon'
 INTERNAL_CODONS = 'internal-codons'
 SUB_MODEL = 'submodel'
 OCC = 'occurrences'
+START = 'start'
 
 state_transition_filename = "model_transitions.json"
 
 
 class Model:
     model = {
+        'start': {'a': 1, 't': 1, 'g': 1, 'c': 1},
         'noncoding': {
             'a': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'transitions_to_end': 1, 'transitions_to_start_codon': {'a': 1, 't': 1, 'g': 1, 'c': 1}, 'occurrences': 0},
             't': {'a': 0, 't': 0, 'g': 0, 'c': 0, 'transitions_to_end': 1, 'transitions_to_start_codon': {'a': 1, 't': 1, 'g': 1, 'c': 1}, 'occurrences': 0},
@@ -50,10 +53,29 @@ class Model:
 
     def train(self):
         print('Training model...')
+        self.train_start_transition()
         self.train_noncoding_region()
         self.train_start_codon_region()
         self.train_internal_codons()
         self.train_stop_codon_transitions()
+
+        self.save_model_json('transition_counts.json')
+
+        self.convert_model_to_prob()
+
+    def convert_model_to_prob(self):
+        self.start_to_prob()
+        self.noncoding_to_prob()
+        self.start_codon_to_prob()
+        self.internal_codons_to_prob()
+        self.end_codon_to_prob()
+
+    def train_start_transition(self):
+        for i in range(0, self.query_count):
+            query = self.metadata[i]
+            query_start_index = query['query_start']
+            start_char = self.seq[query_start_index]
+            self.model[START][start_char] += 1
 
     def train_noncoding_region(self):
         # train_noncoding_region
@@ -88,7 +110,6 @@ class Model:
                         self.model[NONCODING][next_nt]['transitions_to_end'] += 1
 
         self.train_noncoding_transition_to_start_codon()
-        self.noncoding_to_prob()
 
     def train_noncoding_transition_to_start_codon(self):
         # train_noncoding_transition_to_start_codon
@@ -139,8 +160,6 @@ class Model:
                 self.model[START_CODON]['third-nt']['transition_codons'][codon] += 1
                 self.model[START_CODON]['third-nt']['transition_count'] += 1
 
-        self.start_codon_to_prob()
-
     def train_internal_codons(self):
         # train_internal_codons
         # Train the transitions between codons in the coding region, including the stop codons
@@ -163,8 +182,6 @@ class Model:
                     # increment the codon the current codon transitioned to
                     self.model[INTERNAL_CODONS][current_codon][next_codon] += 1
 
-        self.internal_codons_to_prob()
-
     def train_stop_codon_transitions(self):
         # train_stop_codon_transitions
         # train what letter to return to in the noncoding region after a stop codon is encountered
@@ -185,8 +202,6 @@ class Model:
 
                 # increment the base the stop codon transitioned to
                 self.model['internal-codons']['stop-codons'][end_codon][next_base] += 1
-
-        self.end_codon_to_prob()
 
     def build_noncoding_seq(self, query_index):
         # build_noncoding_seq: query to examine
@@ -269,6 +284,13 @@ class Model:
 
         return codon_seqs
 
+    def start_to_prob(self):
+        bsum = sum(self.model[START].values())
+
+        for base in self.model[START]:
+            self.model[START][base] /= bsum
+            self.model[START][base] = math.log(self.model[START][base], 2)
+
     def internal_codons_to_prob(self):
         # internal_codons_to_prob
         # takes the raw codon counts and converts them to transition probabilities
@@ -283,7 +305,9 @@ class Model:
 
                 # for each of the condons we can transition to, divide by the total number of codons seen
                 for trans_codon in self.model[INTERNAL_CODONS][codon]:
-                    self.model[INTERNAL_CODONS][codon][trans_codon] /= codon_count
+                    count = self.model[INTERNAL_CODONS][codon][trans_codon]
+                    prob = count / codon_count
+                    self.model[INTERNAL_CODONS][codon][trans_codon] = math.log(prob, 2)
 
     def noncoding_to_prob(self):
         # noncoding_to_prob
@@ -302,8 +326,12 @@ class Model:
                 if transition_nucleotide in self.nt_list:
                     # divide each the total number of transitions by the count, include the transitions to the first
                     # char in the start codon
-                    self.model[NONCODING][nucleotide][transition_nucleotide] /= count
-                    self.model[NONCODING][nucleotide]['transitions_to_start_codon'][transition_nucleotide] /= count
+                    prob = self.model[NONCODING][nucleotide][transition_nucleotide] / count
+                    self.model[NONCODING][nucleotide][transition_nucleotide] = math.log(prob, 2)
+                    # self.model[NONCODING][nucleotide][transition_nucleotide] /= count
+                    prob = self.model[NONCODING][nucleotide]['transitions_to_start_codon'][transition_nucleotide] / count
+                    # self.model[NONCODING][nucleotide]['transitions_to_start_codon'][transition_nucleotide] /= count
+                    self.model[NONCODING][nucleotide]['transitions_to_start_codon'][transition_nucleotide] = math.log(prob,2)
 
             # we also need to know how ofter this nucleotide ended the query
             self.model[NONCODING][nucleotide]['transitions_to_end'] /= count
@@ -312,19 +340,14 @@ class Model:
         # start_codon_to_prob
         # finds the transition probabilities from the last char of the start codon to the second codon
 
-        # first, count the number of first nucleotides seen
-        # first_nt = self.model[START_CODON]['first-nt']
-        # count = sum(first_nt.values())
-        # for nt in first_nt:
-        #     if nt in self.nt_list:
-        #         self.model[START_CODON]['first-nt'][nt] /= count
-
         # find the total number of transitions we've seen
         count = sum(self.model[START_CODON]['third-nt']['transition_codons'].values())
 
         # loop through each of the possible codons to transition to and divide by the count
         for codon in self.model[START_CODON]['third-nt']['transition_codons']:
-            self.model[START_CODON]['third-nt']['transition_codons'][codon] /= count
+            prob = self.model[START_CODON]['third-nt']['transition_codons'][codon] / count
+            # self.model[START_CODON]['third-nt']['transition_codons'][codon] /= count
+            self.model[START_CODON]['third-nt']['transition_codons'][codon] = math.log(prob, 2)
 
     def end_codon_to_prob(self):
         # end_codon_to_prob
@@ -337,7 +360,8 @@ class Model:
 
             # for each of the nucleotides, divide the counted transitions by the total number of transitions
             for base_trans in self.model['internal-codons']['stop-codons'][stop_codon]:
-                self.model['internal-codons']['stop-codons'][stop_codon][base_trans] /= count
+                prob = self.model['internal-codons']['stop-codons'][stop_codon][base_trans] / count
+                self.model['internal-codons']['stop-codons'][stop_codon][base_trans] = math.log(prob, 2)
 
     def save_model_bin(self, filename):
         # Save the model to binary file for use in prediction
@@ -349,6 +373,7 @@ class Model:
         j = json.dumps(self.model, indent=4, sort_keys=True)
         f = open(filename, 'w')
         f.write(j)
+        f.close()
 
     def test(self, start, end):
         if self.state_transitions is None:
@@ -405,4 +430,4 @@ class Model:
                     if prob > max['internal-codons']:
                         max['internal-codons'] = prob
 
-        elif current_state == self.state_transitions['metadata']['state-order'].index("stop-codons"):
+        # elif current_state == self.state_transitions['metadata']['state-order'].index("stop-codons"):
