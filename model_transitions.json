@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "ignore-top-level-vals": 2,
-    "state-order": ["noncoding", "start-codon-first", "start-codon-t", "start-codon-g", "internal-codons", "stop-codons"]
+    "state-space": ["start", "noncoding", "start-codon-first", "start-codon-t", "start-codon-g", "internal-codons", "stop-codons", "end"],
+    "stop-codons": ["taa", "tag", "tga"]
   }, 
   "start": {
-    "from": null,
+    "from": [],
     "to": ["noncoding"]
   },
 
@@ -16,9 +16,9 @@
         {"state": "c", "submodel": "noncoding"},
         {"state": "g", "submodel": "noncoding"},
         {"state": "t", "submodel": "noncoding"},
-        {"state":  "taa", "submodel": "internal-codons"},
-        {"state":  "tag", "submodel": "internal-codons"},
-        {"state":  "tga", "submodel": "internal-codons"}
+        {"state":  "taa", "submodel": "stop-codons"},
+        {"state":  "tag", "submodel": "stop-codons"},
+        {"state":  "tga", "submodel": "stop-codons"}
       ]
     },
     "t": {
@@ -28,9 +28,9 @@
         {"state": "c", "submodel": "noncoding"},
         {"state": "g", "submodel": "noncoding"},
         {"state": "t", "submodel": "noncoding"},
-        {"state":  "taa", "submodel": "internal-codons"},
-        {"state":  "tag", "submodel": "internal-codons"},
-        {"state":  "tga", "submodel": "internal-codons"}
+        {"state":  "taa", "submodel": "stop-codons"},
+        {"state":  "tag", "submodel": "stop-codons"},
+        {"state":  "tga", "submodel": "stop-codons"}
       ]
     },
     "c": {
@@ -40,9 +40,9 @@
         {"state": "c", "submodel": "noncoding"},
         {"state": "g", "submodel": "noncoding"},
         {"state": "t", "submodel": "noncoding"},
-        {"state":  "taa", "submodel": "internal-codons"},
-        {"state":  "tag", "submodel": "internal-codons"},
-        {"state":  "tga", "submodel": "internal-codons"}
+        {"state":  "taa", "submodel": "stop-codons"},
+        {"state":  "tag", "submodel": "stop-codons"},
+        {"state":  "tga", "submodel": "stop-codons"}
       ]
     },
     "g": {
@@ -52,9 +52,9 @@
         {"state": "c", "submodel": "noncoding"},
         {"state": "g", "submodel": "noncoding"},
         {"state": "t", "submodel": "noncoding"},
-        {"state":  "taa", "submodel": "internal-codons"},
-        {"state":  "tag", "submodel": "internal-codons"},
-        {"state":  "tga", "submodel": "internal-codons"}
+        {"state":  "taa", "submodel": "stop-codons"},
+        {"state":  "tag", "submodel": "stop-codons"},
+        {"state":  "tga", "submodel": "stop-codons"}
       ]
     }
   },
@@ -121,6 +121,15 @@
   "stop-codons": {
     "from": [
       {"state": "internal-codons", "submodel": "internal-codons"}
+    ]
+  },
+
+  "end": {
+    "from": [
+      {"state": "a", "submodel":  "internal-codons"},
+      {"state": "t", "submodel":  "internal-codons"},
+      {"state": "g", "submodel":  "internal-codons"},
+      {"state": "c", "submodel":  "internal-codons"}
     ]
   }
 }
