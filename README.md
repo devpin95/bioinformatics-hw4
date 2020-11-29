@@ -61,7 +61,7 @@ __noncoding__ -
 For noncoding states, transitions to other noncoding states (a, t, g, c), the first base of the start codon (a, t, g, c followed by tg)
 and the end state are counted
 
-__start-codon-first__ (the first letter of the start codon, followed by *tg*) <br>
+__start-codon-first__ (the first letter of the start codon, followed by *tg*) -
 For the first letter of the start codon, the transitions to the *t* in the start codon are counted (should be 100%)
 
 __start-codon-t__ -
