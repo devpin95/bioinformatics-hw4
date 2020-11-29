@@ -48,40 +48,40 @@ Hint: When implementing the Viterbi algorithm, instead of multiplying probabilit
 
 ---    
     
-### Program Description
-#### Training
+## Program Description
+### Training
 To train the model, the transition counts were extracted from the training sequences and converted into log-probabilities
 for testing. After running *training.py*, the model will be saved in *model.json* for debugging/reading and *model_bin*
 for loading in *testing.py*. For each state, each state it could transition from are considered. 
 
-__start__ <br>
+__start__ -
 The start state counts the number of transitions to each of the noncoding states (a, t, g, c)
 
-__noncoding__ <br>
+__noncoding__ -
 For noncoding states, transitions to other noncoding states (a, t, g, c), the first base of the start codon (a, t, g, c followed by tg)
 and the end state are counted
 
 __start-codon-first__ (the first letter of the start codon, followed by *tg*) <br>
 For the first letter of the start codon, the transitions to the *t* in the start codon are counted (should be 100%)
 
-__start-codon-t__ <br>
+__start-codon-t__ -
 Should always transition to *g*
 
-__start-codon-g__ <br>
+__start-codon-g__ -
 The *g* in the start codon should always transition to an internal codon. The number of transitions to each possible codon
 are counted.
 
-__internal-codons__ <br>
+__internal-codons__ -
 For each possible codon, the transition to all other possible codons are counted, including stop codons
 
-__stop-codons__ <br>
+__stop-codons__ - 
 Stop codons always transition back to a noncoding state. Each stop codon (taa, tag, taa) counts the number of times it transitions
 to a base in the noncoding submodel (a, t, g, c).
 
-__end__ (not shown in *model.json*)<br>
+__end__ (not shown in *model.json*) -
 the end state ends the sequence. Only states (a, t, g, c) in the noncoding submodel can transition to the end state.
 
-#### Testing
+### Testing
 
 For use in the Viterbi algorithm (implemented as *viterbi(seq)* in *model.py*), the file 
 *model_transitions.json* shows all possible states the current state could have transitioned from. For example, each high-level
