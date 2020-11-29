@@ -1,9 +1,11 @@
 import pickle
 import json
 import math
+from pandas import *
 
 NONCODING = 'noncoding'
 START_CODON = 'start-codon'
+STOP_CODONS = 'stop-codons'
 INTERNAL_CODONS = 'internal-codons'
 SUB_MODEL = 'submodel'
 OCC = 'occurrences'
@@ -379,11 +381,56 @@ class Model:
         if self.state_transitions is None:
             self.load_state_transitions()
         test_seq = self.seq[start:end]
+
+        # test_seq = 'gcatgacctaatagaat'
+
         self.build_tables(test_seq)
 
         self.viterbi(test_seq)
 
-        print(self.T1[7][len(test_seq)-1])
+        # print(self.T1[7][len(test_seq)-1])
+        # print(self.T2[7][len(test_seq) - 1])
+
+        # print(DataFrame(self.T1))
+
+        # columns = [char for char in test_seq]
+        # print(DataFrame(self.T2, columns=columns))
+
+        path = []
+        distance = 0
+        move_to = self.state_transitions['metadata']['state-space'].index('noncoding')
+        for i in range(len(test_seq) - 1, 0, -1):
+            path.insert(0, self.T2[move_to][i - distance])
+            move_to = self.T2[move_to][i - distance]
+            if move_to == 0:
+                break
+            if move_to == 6 or move_to == 5:
+                distance += 2
+
+        print("PATH:", path)
+
+        starts = []
+        ends = []
+        gene_started = False
+        start = 0
+        end = 0
+        for i in range(0, len(path)):
+            if path[i] == 2:
+                starts.append(i)
+
+        print("STARTS:", starts)
+
+        for start in starts:
+            for i in range(start, len(path)):
+                if path[i] == 6:
+                    ends.append(i)
+                    break
+
+
+
+        print("ENDS:", ends)
+
+        # print(set(path))
 
         self.T1 = []
         self.T2 = []
@@ -398,7 +445,7 @@ class Model:
             self.T2.append([])
             for j in range(0, len(seq)):
                 self.T1[i].append(0)
-                self.T2[i].append({})
+                self.T2[i].append(-1)
 
     # def set_first_state(self, seq):
     #     state = self.state_transitions['metadata']['state-order'].index("noncoding")
@@ -408,14 +455,16 @@ class Model:
     def viterbi(self, seq):
         # state space: ["start", "noncoding", "start-codon-first", "start-codon-t", "start-codon-g", "internal-codons", "stop-codons", "end"]
         s = self.state_transitions['metadata']['state-space']
-        pi = [math.log(1.0, 2), -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf]
+        pi = [-math.inf, self.model['start'][seq[0]], -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf]
+        pi_a = [-1, 0, -1, -1, -1, -1, -1, -1]
 
         for i in range(0, len(s)):
             self.T1[i][0] = pi[i]
+            self.T2[i][0] = pi_a[i]
 
         for base in range(1, len(seq)):
             for state in range(0, len(s)):
-                # print(base, state)
+                # print(base, s[state], end='')
                 self.T1[state][base], self.T2[state][base] = self.max_and_arg(state, s, seq, base)
 
     def max_and_arg(self, state, s, seq, base):
@@ -434,6 +483,8 @@ class Model:
         if base <= len(seq) - 4:
             current_codon = seq[base] + seq[base + 1] + seq[base + 2]
 
+        prob_list = [-math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf]
+
         for prev_state in range(0, len(s)):
             current_state_name = s[state]
             prev_state_name = s[prev_state]
@@ -442,82 +493,104 @@ class Model:
 
             if current_state_name == 'start':
                 # prob = self.T1[prev_state][base - 1] + self.model[current_state_name][prev_base]
-                prob = -math.inf
+                break
 
             elif current_state_name == 'noncoding':
-                prob = self.T1[prev_state][base - 1] + self.v_noncoding(current_base, prev_base, current_state_name, prev_state_name, prev_codon)
+                int_prob, sc = self.v_noncoding(current_base, prev_base, current_state_name, prev_state_name, prev_codon)
+                if sc:
+                    prob = self.T1[prev_state][base - 3] + int_prob
+                else:
+                    prob = self.T1[prev_state][base - 1] + int_prob
 
             elif current_state_name == 'start-codon-first':
-                prob = self.T1[prev_state][base - 1] + self.model[NONCODING][prev_base]['transitions_to_start_codon'][
-                    current_base]
+                if base + 2 < len(seq):
+                    next_2_bases = seq[base + 1] + seq[base + 2]
+                    if next_2_bases != 'tg':
+                        break
+
+                prob = self.T1[prev_state][base - 1] + self.v_start_codon_first(current_base, prev_base, current_state_name, prev_state_name)
 
             elif current_state_name == 'start-codon-t':
+                if base + 1 < len(s):
+                    next_base = seq[base + 1]
+                    if next_base != 'g':
+                        break
+
                 prob = self.T1[prev_state][base - 1] + self.v_start_codon_t(current_base, prev_base, current_state_name, prev_state_name)
 
             elif current_state_name == 'start-codon-g':
+                if prev_base != 't':
+                    break
                 prob = self.T1[prev_state][base - 1] + self.v_start_codon_g(current_base, prev_base, current_state_name, prev_state_name)
 
             elif current_state_name == 'internal-codons':
+                prev_2_bases = ''
                 if codon_range:
-                    prob = self.T1[prev_state][base - 1] + self.v_internal_codons(current_codon, prev_base, prev_codon, current_state_name, prev_state_name)
+                    if base - 2 > 0:
+                        prev_2_bases = seq[base - 2] + seq[base - 1]
+
+                    if prev_state_name == 'internal-codons':
+                        prob = self.T1[prev_state][base - 3] + self.v_internal_codons(current_codon, prev_2_bases,
+                                                                                      prev_codon, current_state_name,
+                                                                                      prev_state_name)
+                    else:
+                        prob = self.T1[prev_state][base - 1] + self.v_internal_codons(current_codon, prev_2_bases,
+                                                                                      prev_codon, current_state_name,
+                                                                                      prev_state_name)
 
             elif current_state_name == 'stop-codons':
                 if codon_range:
-                    prob = self.T1[prev_state][base - 1] + self.v_stop_codons(current_codon, prev_codon, current_state_name, prev_state_name)
+                    prob = self.T1[prev_state][base - 3] + self.v_stop_codons(current_codon, prev_codon, current_state_name, prev_state_name)
 
             elif current_state_name == 'end':
-                prob = self.T1[prev_state][base] + self.v_end(current_base, current_state_name, prev_state_name)
+                break
+
+            prob_list[prev_state] = prob
 
             if prob > max_prob:
                 max_prob = prob
                 arg_max = prev_state
 
+        # print(prob_list)
         return max_prob, arg_max
 
     def v_noncoding(self, current_base, prev_base, current_state_name, prev_state_name, prev_codon):
         # Calculate transition probabilities into the noncoding submodel in state current_base
         # State space: start, noncoding, stop codons
 
-        prob = -math.inf  # start with a log-probability of -infinity for a probability of 0.0
+        prob = -math.inf  # store the probability
+        from_stop_codon = False
 
         stop_codons = self.state_transitions['metadata']['stop-codons']
 
         # get the states we could transition from into the noncoding submodel
-        transition_space = [pstate['submodel'] for pstate in
-                            self.state_transitions[current_state_name][current_base]['from']]
+        transition_space = set([pstate['submodel'] for pstate in self.state_transitions[current_state_name][current_base]['from']])
 
-        if prev_state_name not in transition_space:
-            # we could not have transitioned from this state into the noncoding states
-            prob = -math.inf
+        if prev_state_name in transition_space:
 
-        else:
-            # get a list of the states in the submodel that match the state we are coming from
-            target_states = [d for d in self.state_transitions[current_state_name][current_base]['from'] if
-                             d['submodel'] == prev_state_name]
+            if prev_state_name == 'start':
+                prob = -math.inf  # store the probability
 
-            # iterate through the possible states and find the probability we came from there
-            for transition in target_states:
+            elif prev_state_name == 'stop-codons':
+                if prev_codon in stop_codons:
+                    prob = self.model[INTERNAL_CODONS][STOP_CODONS][prev_codon][current_base]
+                    # prob = 0.0
+                    from_stop_codon = True
 
-                submodel = transition['submodel']  # the name of the submodel we came from
+            elif prev_state_name == 'noncoding':
+                prob = self.model[NONCODING][prev_base][current_base]
 
-                trans_prob = -math.inf  # store the probability
+        return prob, from_stop_codon
 
-                if prev_state_name == 'start':
-                    # get the probability we got to the current base from the start state
-                    trans_prob = self.model[submodel][current_base]
+    def v_start_codon_first(self, current_base, prev_base, current_state_name, prev_state_name):
 
-                elif prev_state_name == 'stop-codons':
-                    if prev_codon in stop_codons:
-                        # get the probability that we got to the current base from a stop codon
-                        submodel_state = transition['state']  # 'stop-codons'
-                        trans_prob = self.model['internal-codons'][submodel][submodel_state][current_base]
+        prob = -math.inf
 
-                else:  # noncoding
-                    # get the probability we came from another state in the noncoding region
-                    trans_prob = self.model[submodel][current_base][prev_base]
+        transition_space = set([d['submodel'] for d in self.state_transitions['start-codon-first'][current_base]['from']])
 
-                if trans_prob > prob:
-                    prob = trans_prob
+        if prev_state_name in transition_space:
+            if prev_state_name == 'noncoding':
+                prob = self.model[NONCODING][prev_base]['transitions_to_start_codon'][current_base]
 
         return prob
 
@@ -554,23 +627,17 @@ class Model:
         stop_codons = self.state_transitions['metadata']['stop-codons']
 
         # get the states we could transition from into the noncoding submodel
-        transition_space = [pstate['submodel'] for pstate in
-                            self.state_transitions[current_state_name]['from']]
+        transition_space = set([pstate['submodel'] for pstate in
+                            self.state_transitions[current_state_name]['from']])
 
         if prev_state_name in transition_space:
-            target_states = [d for d in self.state_transitions[current_state_name]['from'] if
-                             d['submodel'] == prev_state_name]
+            if prev_state_name == 'internal-codons' and prev_codon not in stop_codons:
+                if current_codon != '':
+                    prob = self.model[INTERNAL_CODONS][prev_codon][current_codon]
 
-            for transition in target_states:
-                submodel = transition['submodel']
-
-                if prev_state_name == 'internal-codons' and prev_codon not in stop_codons:
-                    if current_codon != '':
-                        prob = self.model[submodel][prev_codon][current_codon]
-
-                elif prev_state_name == 'start-codon-g':
-                    if current_codon != '':
-                        prob = self.model['start-codon']['third-nt']['transition_codons'][current_codon]
+            elif prev_state_name == 'start-codon-g':
+                if current_codon != '' and prev_base == 'tg':
+                    prob = self.model['start-codon']['third-nt']['transition_codons'][current_codon]
 
         return prob
 
