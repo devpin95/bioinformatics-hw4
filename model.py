@@ -382,6 +382,8 @@ class Model:
             self.load_state_transitions()
         test_seq = self.seq[start:end]
 
+        print(str(start) + "-" + str(end) + ": ", end='')
+
         # test_seq = 'gcatgacctaatagaat'
 
         self.build_tables(test_seq)
@@ -407,30 +409,7 @@ class Model:
             if move_to == 6 or move_to == 5:
                 distance += 2
 
-        print("PATH:", path)
-
-        starts = []
-        ends = []
-        gene_started = False
-        start = 0
-        end = 0
-        for i in range(0, len(path)):
-            if path[i] == 2:
-                starts.append(i)
-
-        print("STARTS:", starts)
-
-        for start in starts:
-            for i in range(start, len(path)):
-                if path[i] == 6:
-                    ends.append(i)
-                    break
-
-
-
-        print("ENDS:", ends)
-
-        # print(set(path))
+        self.extract_ranges(start, end, path)
 
         self.T1 = []
         self.T2 = []
@@ -664,3 +643,39 @@ class Model:
             prob = self.model[NONCODING][current_base]['transitions_to_end']
 
         return prob
+
+    def extract_ranges(self, start, end, path):
+        normalized_path = []
+
+        for i in range(0, len(path)):
+            if path[i] == 5 or path[i] == 6:
+                normalized_path.append(path[i])
+                normalized_path.append(path[i])
+                normalized_path.append(path[i])
+            else:
+                normalized_path.append(path[i])
+
+        starts = []
+        ends = []
+        for i in range(0, len(normalized_path)):
+            if normalized_path[i] == 2:
+                starts.append(i)
+
+        for starti in starts:
+            for i in range(starti, len(normalized_path)):
+                if normalized_path[i] == 6:
+                    ends.append(i)
+                    break
+
+        if len(starts) == 0:
+            print("no gene", end='')
+
+        for i in range(0, len(starts)):
+            start_index = start + starts[i]
+            end_index = start + ends[i]
+
+            print("[" + str(start_index) + ", " + str(end_index) + "]", end=' ')
+
+        print()
+
+        # print("STARTS: ", starts, "ENDS:", ends)
