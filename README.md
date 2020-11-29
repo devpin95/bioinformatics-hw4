@@ -45,7 +45,8 @@ Hint: When implementing the Viterbi algorithm, instead of multiplying probabilit
 1. In addition, turn in
     * a file listing the indices used for the states.
     * a file listing the transition counts you get for the provided training set.
-    
+
+---    
     
 ### Program Description
 #### Training
@@ -80,6 +81,7 @@ to a base in the noncoding submodel (a, t, g, c).
 __end__ (not shown in *model.json*)<br>
 the end state ends the sequence. Only states (a, t, g, c) in the noncoding submodel can transition to the end state.
 
+#### Testing
 
 For use in the Viterbi algorithm (implemented as *viterbi(seq)* in *model.py*), the file 
 *model_transitions.json* shows all possible states the current state could have transitioned from. For example, each high-level
