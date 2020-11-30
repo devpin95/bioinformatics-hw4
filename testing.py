@@ -1,14 +1,23 @@
 import pickle
 import json
 from model import Model
+import argparse
 
-full_seq_file_name = "sequenceOfEcoliStrainM54.txt"
+parser = argparse.ArgumentParser()
+parser.add_argument("seq_file", help="a file containing a DNA sequence")
+parser.add_argument("test_seqs", help="a file containing a list of test sequences")
+args = parser.parse_args()
+
+full_seq_file_name = args.seq_file
+test_filename = args.test_seqs
+
+# full_seq_file_name = "sequenceOfEcoliStrainM54.txt"
 full_seq_file = open(full_seq_file_name)
 
 full_seq = full_seq_file.read().split()  # read the file, and remove whitespace and newline chars
 full_seq = ''.join(full_seq)  # rejoin the split with no space between elements
 
-test_filename = "test_seqs.txt"
+# test_filename = "test_seqs.txt"
 test_seqs = []
 
 testfile = open(test_filename)
@@ -31,6 +40,8 @@ model = Model(full_seq, {})
 
 bmodelfile = 'model_bin'
 model.load_model(bmodelfile)
+
+# model.test(test_seqs[0]['query-start'], test_seqs[0]['query-end'])
 
 for seq in test_seqs:
     model.test(seq['query-start'], seq['query-end'])

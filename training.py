@@ -1,8 +1,17 @@
 import re
 from model import Model
+import argparse
 
-full_seq_file_name = "sequenceOfEcoliStrainM54.txt"
-training_seqs_file_name = "train_seqs.txt"
+parser = argparse.ArgumentParser()
+parser.add_argument("seq_file", help="a file containing a DNA sequence")
+parser.add_argument("train_seqs", help="a file containing a list of training sequences")
+args = parser.parse_args()
+
+full_seq_file_name = args.seq_file
+training_seqs_file_name = args.train_seqs
+
+# full_seq_file_name = "sequenceOfEcoliStrainM54.txt"
+# training_seqs_file_name = "train_seqs.txt"
 
 full_seq_file = open(full_seq_file_name)
 
